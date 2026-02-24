@@ -2,11 +2,10 @@ import { GameObjects } from "phaser";
 import type { Game } from "../scenes/Game";
 import {
   snapWorldToGridCenter,
+  type TileCoord,
   tileToWorldCenter,
   worldToTile,
 } from "../utils/grid";
-
-export type TileCoord = { tx: number; ty: number };
 
 type UnitRecord = {
   body: GameObjects.Rectangle;
@@ -33,7 +32,7 @@ export class UnitSystem {
       .rectangle(50, 50, 12, 12, 0xffffff)
       .setOrigin(0.5);
 
-    const snapped = snapWorldToGridCenter(rect.x, rect.y);
+    const snapped = snapWorldToGridCenter(rect.x, rect.y, this.scene.cell);
 
     rect.setPosition(snapped.x, snapped.y);
 
@@ -165,18 +164,18 @@ export class UnitSystem {
    */
   moveSelectedUnitsTo(worldX: number, worldY: number) {
     // Convert click to a tile center.
-    const snapped = snapWorldToGridCenter(worldX, worldY);
+    const snapped = snapWorldToGridCenter(worldX, worldY, this.scene.cell);
 
     // Keep marker behavior here OR in PointerControlsSystem — choose one owner.
     // Since you already had marker functions inside UnitSystem, we keep it here.
     this.setDestinationMarker(snapped.x, snapped.y);
 
-    const destTile = worldToTile(snapped.x, snapped.y);
+    const destTile = worldToTile(snapped.x, snapped.y, this.scene.cell);
 
     for (const unit of this.units) {
       if (!unit.selected) continue;
 
-      const startTile = worldToTile(unit.body.x, unit.body.y);
+      const startTile = worldToTile(unit.body.x, unit.body.y, this.scene.cell);
 
       unit.destinationTile = destTile;
 
@@ -184,7 +183,9 @@ export class UnitSystem {
       const tilePath = this.buildManhattanTilePath(startTile, destTile);
 
       // Convert tiles -> world tile centers.
-      unit.waypointQueue = tilePath.map((t) => tileToWorldCenter(t.tx, t.ty));
+      unit.waypointQueue = tilePath.map((t) =>
+        tileToWorldCenter(t.tx, t.ty, this.scene.cell),
+      );
     }
   }
 
