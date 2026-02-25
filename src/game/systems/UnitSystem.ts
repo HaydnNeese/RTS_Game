@@ -28,20 +28,30 @@ export class UnitSystem {
   constructor(private scene: Game) {}
 
   createUnits() {
-    const rect = this.scene.add
-      .rectangle(50, 50, 12, 12, 0xffffff)
-      .setOrigin(0.5);
+    const spawnPoints = [
+      { x: 50, y: 50 },
+      { x: 82, y: 50 },
+      { x: 114, y: 50 },
+      { x: 50, y: 82 },
+      { x: 82, y: 82 },
+      { x: 114, y: 82 },
+    ];
 
-    const snapped = snapWorldToGridCenter(rect.x, rect.y, this.scene.cell);
+    for (const p of spawnPoints) {
+      const rect = this.scene.add
+        .rectangle(p.x, p.y, 12, 12, 0xffffff)
+        .setOrigin(0.5);
 
-    rect.setPosition(snapped.x, snapped.y);
+      const snapped = snapWorldToGridCenter(rect.x, rect.y, this.scene.cell);
+      rect.setPosition(snapped.x, snapped.y);
 
-    this.units.push({
-      body: rect,
-      selected: false,
-      moveSpeedPxPerSec: 120,
-      waypointQueue: [],
-    });
+      this.units.push({
+        body: rect,
+        selected: false,
+        moveSpeedPxPerSec: 120,
+        waypointQueue: [],
+      });
+    }
   }
 
   update(dtSeconds: number) {
@@ -135,6 +145,37 @@ export class UnitSystem {
     this.applySelectedStyle(clicked);
 
     return true;
+  }
+
+  /**
+   * Select all units whose bounds intersect the given WORLD rectangle.
+   *
+   * This keeps PointerControlsSystem from needing to touch UnitSystem internals
+   * (it should not iterate unit records directly).
+   *
+   * For now this is non-additive (drag always replaces selection).
+   * Later: add an `additive` flag (Shift) to support additive selection.
+   */
+  selectUnitsInWorldRect(worldRect: Phaser.Geom.Rectangle): number {
+    // Drag-select is "replace selection" for now.
+    this.clearSelection();
+
+    let count = 0;
+
+    for (const unit of this.units) {
+      const bounds = unit.body.getBounds();
+
+      // Intersection check: if a unit overlaps the selection rectangle at all, we select it.
+      // Later we can switch to "contains center point" if you prefer stricter selection.
+      const intersects = Phaser.Geom.Rectangle.Overlaps(worldRect, bounds);
+      if (!intersects) continue;
+
+      unit.selected = true;
+      this.applySelectedStyle(unit);
+      count++;
+    }
+
+    return count;
   }
 
   /**
